@@ -1,0 +1,28 @@
+from pathlib import Path
+p=Path('/mnt/data/index.html')
+p.write_text('''<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E-Waardbouw | Urenregistratie</title>
+<style>
+body{font-family:system-ui,Arial;background:#f3f5f8;color:#172333;margin:0;padding:20px}main{max-width:600px;margin:auto}h1{margin-bottom:4px}small{color:#536273}form,section{background:white;border-radius:14px;padding:20px;margin:18px 0;box-shadow:0 2px 10px #0001}label{display:block;margin:12px 0 5px;font-weight:600}input,textarea,button{box-sizing:border-box;width:100%;font:inherit;padding:12px;border:1px solid #cbd2db;border-radius:8px}button{background:#163d68;color:white;border:0;margin-top:15px;font-weight:bold;cursor:pointer}.secondary{background:#e8edf3;color:#163d68}table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;border-bottom:1px solid #ddd;padding:9px 3px}p.note{font-size:13px;color:#526070}#melding{color:#176b39}
+</style></head><body><main><h1>E-Waardbouw</h1><small>Urenregistratie</small>
+<form id="formulier"><label for="datum">Datum</label><input type="date" id="datum" required>
+<label for="project">Project / klant</label><input id="project" required placeholder="Bijvoorbeeld: Verbouwing familie Jansen">
+<label for="start">Begintijd</label><input type="time" id="start" required>
+<label for="eind">Eindtijd</label><input type="time" id="eind" required>
+<label for="pauze">Pauze (minuten)</label><input type="number" id="pauze" min="0" value="30" required>
+<label for="werk">Werkzaamheden</label><textarea id="werk" rows="3" placeholder="Wat heb je gedaan?"></textarea>
+<button type="submit">Uren opslaan</button><p id="melding" role="status"></p></form>
+<section><h2>Opgeslagen uren</h2><div style="overflow-x:auto"><table><thead><tr><th>Datum</th><th>Project</th><th>Uren</th></tr></thead><tbody id="regels"></tbody></table></div>
+<button type="button" id="export" class="secondary">Download voor Excel (CSV)</button>
+<p class="note">Let op: gegevens worden voorlopig alleen in deze browser op dit apparaat bewaard. Ze worden nog niet automatisch naar Excel of andere apparaten verstuurd. Exporteer regelmatig een kopie.</p></section></main>
+<script>
+const key='ewaardbouw-uren-v1';
+const $=id=>document.getElementById(id);
+$('datum').value=new Date().toLocaleDateString('en-CA');
+function lees(){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}}
+function toon(){const rows=lees();$('regels').replaceChildren();for(const r of rows){const tr=document.createElement('tr');for(const value of [r.datum,r.project,r.uren.toFixed(2).replace('.',',')]){const td=document.createElement('td');td.textContent=value;tr.append(td)}$('regels').append(tr)}}
+$('formulier').addEventListener('submit',e=>{e.preventDefault();const start=$('start').value.split(':').map(Number),end=$('eind').value.split(':').map(Number);let minuten=end[0]*60+end[1]-start[0]*60-start[1]-Number($('pauze').value);if(minuten<=0){$('melding').textContent='Controleer de tijden en pauze.';return}const rows=lees();rows.push({datum:$('datum').value,project:$('project').value,begin:$('start').value,eind:$('eind').value,pauze:Number($('pauze').value),uren:minuten/60,werk:$('werk').value});try{localStorage.setItem(key,JSON.stringify(rows));$('melding').textContent='Uren opgeslagen op dit apparaat.';toon();$('werk').value=''}catch{$('melding').textContent='Opslaan mislukt. Controleer de browseropslag.'}});
+$('export').addEventListener('click',()=>{const rows=lees(),headers=['Datum','Project','Begin','Eind','Pauze minuten','Uren','Werkzaamheden'];const q=v=>'"'+String(v??'').replaceAll('"','""')+'"';const csv='\\ufeff'+[headers,...rows.map(r=>[r.datum,r.project,r.begin,r.eind,r.pauze,r.uren.toFixed(2).replace('.',','),r.werk])].map(row=>row.map(q).join(';')).join('\\r\\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='ewaardbouw-uren.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});toon();
+</script></body></html>''',encoding='utf-8')
+print(p, p.stat().st_size)
